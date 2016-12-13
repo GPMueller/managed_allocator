@@ -1,7 +1,20 @@
 #pragma once
 
-#include <thrust/system_error.h>
-#include <thrust/system/cuda/error.h>
+#include <stdio.h>
+
+
+static void HandleError( cudaError_t err, const char *file, int line )
+{
+	// CUDA error handeling from the "CUDA by example" book
+	if (err != cudaSuccess)
+  {
+		printf( "%s in %s at line %d\n", cudaGetErrorString( err ), file, line );
+		exit( EXIT_FAILURE );
+	}
+}
+
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
 
 template<class T>
 class managed_allocator
@@ -12,25 +25,14 @@ class managed_allocator
     value_type* allocate(size_t n)
     {
       value_type* result = nullptr;
-  
-      cudaError_t error = cudaMallocManaged(&result, n*sizeof(T), cudaMemAttachGlobal);
-  
-      if(error != cudaSuccess)
-      {
-        throw thrust::system_error(error, thrust::cuda_category(), "managed_allocator::allocate(): cudaMallocManaged");
-      }
-  
+
+      HANDLE_ERROR( cudaMallocManaged(&result, n*sizeof(T), cudaMemAttachGlobal) );
+
       return result;
     }
   
     void deallocate(value_type* ptr, size_t)
     {
-      cudaError_t error = cudaFree(ptr);
-  
-      if(error != cudaSuccess)
-      {
-        throw thrust::system_error(error, thrust::cuda_category(), "managed_allocator::deallocate(): cudaFree");
-      }
+      HANDLE_ERROR( cudaFree(ptr) );
     }
 };
-

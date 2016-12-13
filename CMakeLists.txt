@@ -56,18 +56,16 @@ set( CMAKE_DISABLE_IN_SOURCE_BUILD ON )
 if (CORE_USE_CUDA)
     find_package(CUDA REQUIRED)
     add_definitions(-DUSE_CUDA)
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_50" )
 endif()
 #############################################
 
 #############################################
-# set(SOURCE_FILES
-#     src/test.cpp
-#     src/kernel.cu
-#     src/kernel.cpp
-# )
+set(SOURCE_FILES
+)
 
 set(HEADER_FILES
-    include/managed_allocator.hpp
+    managed_allocator.hpp
 )
 #############################################
 
