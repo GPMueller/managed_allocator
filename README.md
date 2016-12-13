@@ -4,35 +4,29 @@ A C++ allocator based on `cudaMallocManaged()`.
 
 To create a custom C++ allocator which allocates storage using `cudaMallocManaged`, we need to make a class and give it `.allocate()` and `.deallocate()` functions:
 
-The `.allocate()` function calls `cudaMallocManaged` and throws an exception if it fails:
+The `.allocate()` function calls `cudaMallocManaged`:
 
 ```
     value_type* allocate(size_t n)
     {
       value_type* result = nullptr;
   
-      cudaError_t error = cudaMallocManaged(&result, n*sizeof(T), cudaMemAttachGlobal);
-  
-      if(error != cudaSuccess)
-      {
-        throw thrust::system_error(error, thrust::cuda_category(), "managed_allocator::allocate(): cudaMallocManaged");
-      }
+      value_type* result = nullptr;
+
+      HANDLE_ERROR( cudaMallocManaged(&result, n*sizeof(T), cudaMemAttachGlobal) );
+
+      return result;
   
       return result;
     }
 ```
 
-The `.deallocate()` function can just call `cudaFree()`:
+The `.deallocate()` function calls `cudaFree()`:
 
 ```
     void deallocate(value_type* ptr, size_t)
     {
-      cudaError_t error = cudaFree(ptr);
-  
-      if(error != cudaSuccess)
-      {
-        throw thrust::system_error(error, thrust::cuda_category(), "managed_allocator::deallocate(): cudaFree");
-      }
+      HANDLE_ERROR( cudaFree(ptr) );
     }
 ```
 
@@ -40,9 +34,6 @@ Here's a program which demonstrates some of the different things you can do with
 
 ```
 #include "managed_allocator.hpp"
-#include <thrust/fill.h>
-#include <thrust/logical.h>
-#include <thrust/execution_policy.h>
 #include <vector>
 #include <algorithm>
 #include <numeric>
@@ -90,27 +81,6 @@ int main()
   });
 
   assert(std::equal(ref.begin(), ref.end(), vec.begin()));
-
-  // we can also use it with Thrust algorithms
-
-  // by default, the Thrust algorithm will execute on the host with the managed_vector
-  thrust::fill(vec.begin(), vec.end(), 7);
-  assert(std::all_of(vec.begin(), vec.end(), [](int x)
-  {
-    return x == 7;
-  }));
-
-  // to execute on the device, use the thrust::device execution policy
-  thrust::fill(thrust::device, vec.begin(), vec.end(), 13);
-
-  // we need to synchronize before attempting to use the vector on the host
-  cudaDeviceSynchronize();
-
-  // to execute on the host, use the thrust::host execution policy
-  assert(thrust::all_of(thrust::host, vec.begin(), vec.end(), [](int x)
-  {
-    return x == 13;
-  }));
 
   std::cout << "OK" << std::endl;
 
